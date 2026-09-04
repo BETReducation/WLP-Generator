@@ -41,6 +41,17 @@ function touchWeek(week: Week): Week {
   return { ...week, updatedAt: new Date().toISOString() };
 }
 
+// Weeks are matched by id everywhere, but the week picker only shows names — two weeks sharing
+// a name are indistinguishable in the dropdown, which reads as a week having "disappeared".
+// Appends " (2)", " (3)", etc. until the name is unique among the other weeks.
+function uniqueWeekName(name: string, weeks: Week[], excludeId?: string): string {
+  const others = weeks.filter((w) => w.id !== excludeId).map((w) => w.name);
+  if (!others.includes(name)) return name;
+  let n = 2;
+  while (others.includes(`${name} (${n})`)) n++;
+  return `${name} (${n})`;
+}
+
 function updateWeekGrid(
   state: AppState,
   weekId: string,
@@ -202,7 +213,7 @@ export function planReducer(state: AppState, action: PlanAction): AppState {
     case 'NEW_WEEK': {
       const week: Week = {
         id: action.id ?? newId(),
-        name: action.name.trim() || 'New Week',
+        name: uniqueWeekName(action.name.trim() || 'New Week', state.weeks),
         grid: emptyGrid(state.subjects),
         updatedAt: new Date().toISOString(),
       };
@@ -214,7 +225,7 @@ export function planReducer(state: AppState, action: PlanAction): AppState {
       if (!source) return state;
       const week: Week = {
         id: newId(),
-        name: action.name.trim() || `${source.name} (copy)`,
+        name: uniqueWeekName(action.name.trim() || `${source.name} (copy)`, state.weeks),
         grid: JSON.parse(JSON.stringify(source.grid)),
         updatedAt: new Date().toISOString(),
       };
@@ -224,7 +235,8 @@ export function planReducer(state: AppState, action: PlanAction): AppState {
     case 'RENAME_WEEK': {
       const name = action.name.trim();
       if (!name) return state;
-      const weeks = state.weeks.map((w) => (w.id === action.weekId ? { ...w, name } : w));
+      const uniqueName = uniqueWeekName(name, state.weeks, action.weekId);
+      const weeks = state.weeks.map((w) => (w.id === action.weekId ? { ...w, name: uniqueName } : w));
       return { ...state, weeks };
     }
 
