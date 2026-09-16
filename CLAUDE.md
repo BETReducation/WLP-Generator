@@ -78,16 +78,17 @@ participate in the lesson. The `buildPrompt()` template in `AiFillButton.tsx` re
   do/You do) if editing the prompt template.
 
 ## Backup / restore
-Since all data lives only in browser localStorage (per browser profile/origin — see "State and
-storage" below), the header has **Export Backup** / **Import Backup** buttons
-(`src/components/BackupControls.tsx`) so data survives a browser reset, profile switch, or
-"clear browsing data":
+Data now lives in Postgres (see "State and storage" below), not localStorage, but the header
+still has **Export Backup** / **Import Backup** buttons (`src/components/BackupControls.tsx`) —
+useful as an off-server snapshot and for the kind of bulk restore/merge done from old source
+files:
 - **Export** downloads the full `AppState` (subjects, library, weeks) as `wlp-backup-<date>.json`
 - **Import** reads a backup file, validates it (`parseBackupState()` in `storage.ts`, reusing
   `reconcile()`), and — after a confirm dialog, since it's destructive — replaces the entire live
-  state via the `REPLACE_STATE` reducer action
+  state via the `REPLACE_STATE` reducer action, which is then persisted to Postgres like any
+  other change
 Recommend the user save exports into a folder that syncs to OneDrive/iCloud/Google Drive so a
-local backup exists off-browser too.
+backup exists outside the database too.
 
 ## Default dropdown options
 Each category has 4 defaults (same across all subjects):
@@ -97,20 +98,39 @@ Each category has 4 defaults (same across all subjects):
 - **Homework:** exam question, flashcard revision, read & annotate, past paper timed
 
 ## State and storage
-- State saved to `localStorage` key `wlp-generator-state-v1`
-- `reconcile()` in `storage.ts` handles migrations — strips old example items, syncs default item text, seeds defaults for empty categories
-- To reset all data: run `localStorage.clear(); location.reload()` in browser console
+- State lives in Postgres, single row (`app_state`, id=1, one `data JSONB` column holding the
+  whole `AppState`) — this app has exactly one user, so there's no per-user schema
+- `src/storage.ts`: `loadState()` GETs `/api/state` on app start, `saveState()` PUTs the whole
+  state (debounced ~800ms after any change, see `PlanContext.tsx`) — both async now, no
+  localStorage involved
+- `server/index.js`: `GET /api/state` (public), `PUT /api/state` (needs `X-AI-Import-Secret`,
+  same secret/header as `/api/ai-import` — reused rather than adding a second env var since the
+  trust model is identical: single user, not a real security boundary)
+- `ensureSchema()` in `server/index.js` runs `CREATE TABLE IF NOT EXISTS` on server start, so no
+  separate migration step is needed after a fresh Postgres provision
+- No offline fallback by design — if `/api/state` is unreachable the app shows a load error
+  instead of silently using stale/empty local data
+- `reconcile()` in `storage.ts` still runs on every load — strips old example items, syncs
+  default item text, seeds defaults for empty categories
+- To reset all data: `DELETE FROM app_state WHERE id = 1;` via `railway connect Postgres`, or PUT
+  a fresh default state to `/api/state`
 
 ## Deployment
-Hosted on Railway (project `WLP-Generator`, under `betreducation` workspace), one service:
-- Build: `npm run build` (tsc + vite build → `dist/`)
-- Start: `npm start` → `node server/index.js`, serves `dist/` and `/api/ai-import`
-- Env vars: `AI_IMPORT_SECRET` (server-side check), `VITE_AI_IMPORT_SECRET` (same value, baked
-  into the frontend build so the prompt can include it), `DATA_DIR=/data`
-- `/api/ai-import` storage is a JSON file on local disk — ephemeral unless a Railway volume is
-  mounted at `/data`. Not currently mounted; fine since imported content only needs to survive
-  until the user clicks "Import AI Content", not long-term (long-term storage is localStorage,
-  per the Backup/restore section)
+Hosted on Railway (project `WLP-Generator`, under `betreducation` workspace), two services:
+- **WLP-Generator** — the app
+  - Build: `npm run build` (tsc + vite build → `dist/`)
+  - Start: `npm start` → `node server/index.js`, serves `dist/`, `/api/state`, `/api/ai-import`
+  - Env vars: `AI_IMPORT_SECRET` (server-side check for both `/api/state` PUT and `/api/ai-import`
+    POST), `VITE_AI_IMPORT_SECRET` (same value, baked into the frontend build), `DATA_DIR=/data`,
+    `DATABASE_URL` (Railway reference variable — `${{Postgres.DATABASE_URL}}` — do not hardcode)
+- **Postgres** — Railway-managed Postgres plugin, private networking only (no public proxy
+  configured); `DATABASE_URL` is only reachable from other services in this project, not from a
+  local machine — use `railway run` or hit the app's own `/api/state` endpoint instead of
+  connecting directly from outside Railway
+- `/api/ai-import` storage is still a JSON file on local disk — ephemeral unless a Railway volume
+  is mounted at `/data` (not currently mounted). Fine since imported content only needs to
+  survive until the user clicks "Import AI Content" — long-term storage is Postgres, per "State
+  and storage" above
 - Redeploy: `railway up` from the project root (or push to GitHub + connect a Railway auto-deploy
   if that's set up later — currently deploys are manual via CLI)
 - GitHub repo (`gbyatt`/`BETReducation` account) is separate from Railway — pushing to GitHub does

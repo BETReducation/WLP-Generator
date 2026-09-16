@@ -1,7 +1,7 @@
 import { DEFAULT_LIBRARY_ITEMS, SUBJECTS, buildDefaultState } from './defaultData';
 import { CATEGORIES, type AppState } from './types';
 
-const STORAGE_KEY = 'wlp-generator-state-v1';
+const STATE_SECRET = import.meta.env.VITE_AI_IMPORT_SECRET as string | undefined;
 
 /** Ensures state has an entry for every current subject/lesson/category, so adding a
  *  subject later (or loading an older save) never leaves the grid/library with holes. */
@@ -59,26 +59,25 @@ export function reconcile(state: AppState): AppState {
   return { subjects, library, weeks, currentWeekId };
 }
 
-export function loadState(): AppState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return buildDefaultState();
-    const parsed = JSON.parse(raw) as AppState;
-    if (!parsed.subjects || !parsed.library || !parsed.weeks || !parsed.currentWeekId) {
-      return buildDefaultState();
-    }
-    return reconcile(parsed);
-  } catch {
+/** Loads the plan from the server. State now lives only in Postgres — there is no
+ *  local fallback, so a failed fetch is a real error the caller must surface. */
+export async function loadState(): Promise<AppState> {
+  const res = await fetch('/api/state');
+  if (!res.ok) throw new Error(`Failed to load state (${res.status})`);
+  const parsed = (await res.json()) as AppState | null;
+  if (!parsed || !parsed.subjects || !parsed.library || !parsed.weeks || !parsed.currentWeekId) {
     return buildDefaultState();
   }
+  return reconcile(parsed);
 }
 
-export function saveState(state: AppState): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // localStorage unavailable (e.g. private browsing quota) - fail silently, in-memory state still works
-  }
+export async function saveState(state: AppState): Promise<void> {
+  const res = await fetch('/api/state', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-AI-Import-Secret': STATE_SECRET ?? '' },
+    body: JSON.stringify(state),
+  });
+  if (!res.ok) throw new Error(`Failed to save state (${res.status})`);
 }
 
 /** Validates and normalises a parsed backup file before it replaces the live state.
