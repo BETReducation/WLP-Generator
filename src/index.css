@@ -371,12 +371,6 @@ select {
   padding: 10px 14px;
 }
 
-.backup-reminder {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin: 0;
-}
-
 .backup-controls {
   display: flex;
   align-items: center;

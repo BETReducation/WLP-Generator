@@ -24,9 +24,6 @@ function AppShell() {
       </header>
 
       <div className="app-subheader">
-        <p className="backup-reminder">
-          Your data lives only in this browser — export a backup file regularly so a browser reset can't lose it.
-        </p>
         <BackupControls />
       </div>
 
