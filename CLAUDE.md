@@ -66,16 +66,20 @@ same class of bug as the original single-week overflow issue, just recurring one
   status message instead
 See `guessWeekName()` and the `overflowChunks`/`overflowChunkInfo` logic in `AiFillButton.tsx`.
 
-### Flipped-classroom model (from week 5, 2026)
-As of week 5, homework comes *before* the lesson and delivers new content; lessons are spent
-practising and deepening what homework already covered. Students must complete homework to
-participate in the lesson. The `buildPrompt()` template in `AiFillButton.tsx` reflects this:
-- **Homework**: a specific textbook note-making task, plus an occasional relevant video —
-  grounded in the chapter, not invented
-- **Activities**: still exactly 3 bullet points following the "I do / We do / You do" gradual-release
-  model, but each one assumes students already have the homework's baseline knowledge — it's
-  practice/deepening, not first teaching. Keep this structure (both the flipped framing and I do/We
-  do/You do) if editing the prompt template.
+### Lesson format (from Nov 2026)
+The school dropped the "I do / We do / You do" model. WLPs should be short, precise and bulleted
+(each newline in a category value becomes one bullet). `buildPrompt()` in `AiFillButton.tsx`
+generates this structure per lesson — keep it if editing the template:
+- **LO** (4 lines): one clear learning objective, then three differentiated success criteria with
+  fixed labels — `Learn:` (definitions, writing a paragraph), `Explore:` (explainers, code in
+  action, applying a chart to a context), `Practice:` (using the knowledge, exam-style questions).
+  Labels never change; the content of each varies with the lesson.
+- **Activities** (3 lines): three terse bullets, each enabling a success criterion. No explanations.
+- **Consolidation** (2 lines): `Review:` of the learning and how the SC were met, then `Next steps:`.
+- **Homework**: unchanged flipped-classroom model — homework comes *before* the lesson and delivers
+  new content (specific textbook note-making task with section number + page range, plus an
+  occasional video); lessons practise and deepen it. The section/page reference used to be the
+  first line of Activities and now lives in Homework.
 
 ## Backup / restore
 Data now lives in Postgres (see "State and storage" below), not localStorage, but the header

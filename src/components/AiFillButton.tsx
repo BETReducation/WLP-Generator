@@ -71,32 +71,33 @@ Use this exact JSON structure as the POST body:
   ]
 }
 
-This is a flipped-classroom model: homework comes BEFORE the lesson and delivers the new
-content; the lesson itself is spent practising and deepening what homework already covered.
-Students are expected to have done the homework before the lesson, so lesson activities must
-assume that knowledge rather than reteach it from scratch.
+Keep everything short and precise — the WLP must be scannable. Each category value is a
+newline-separated string; every line becomes one bullet in the app. No "I do / We do / You do"
+structure (the school no longer uses it).
+
+This is still a flipped-classroom model: homework comes BEFORE the lesson and delivers the new
+content; the lesson itself practises and deepens it. Students are expected to have done the
+homework, so lesson content should assume that knowledge.
 
 For each lesson entry:
-- **Homework**: the prerequisite for the lesson (set the lesson before, covering that lesson's
-  content) — a specific note-making task from the chapter ("make notes on section X covering...")
-  plus, where genuinely relevant to the topic, a specific video to watch (name the topic/search
-  term if you can't give a real URL). Do not invent a homework task that isn't grounded in the
-  chapter content.
-- **LO**: 1–2 specific learning objectives drawn directly from the chapter content, framed as what
-  students will practise/deepen in the lesson, building on the homework
-- **Activities**: starts with a line identifying the specific sub-chapter/section the content is
-  drawn from, with its page range in the textbook, in the form
-  "<section number> - <section title> (p<start>-<end>)" (e.g. "1.2.2 - Representation of sound (p29-30)"),
-  followed by exactly 3 bullet points following the "I do / We do / You do" gradual release
-  model, each grounded in the chapter's specific examples, figures and textbook activities, and
-  each assuming students already have the homework's baseline knowledge (this is practice and
-  deepening, not first teaching):
-  - "I do: ..." — teacher briefly recaps/checks the homework content, then models applying it to a harder example
-  - "We do: ..." — teacher and students work through a practice question together that extends beyond the homework (guided practice)
-  - "You do: ..." — students independently practise/deepen the skill, referencing a specific textbook activity/question
-- **Consolidation**: a specific end-of-lesson check or task confirming the practice/deepening landed
-- Note: students must have completed the homework to participate in the lesson — Activities should
-  read as though that's a given, not optional
+- **Homework**: a specific note-making task from the chapter, with the section number and page
+  range ("make notes on 1.2.2 - Representation of sound (p29-30) covering...") plus, where
+  genuinely relevant, a specific video (name the topic/search term if you can't give a real URL).
+  Grounded in the chapter, not invented.
+- **LO**: exactly 4 lines, in this order:
+  1. One clear learning objective, drawn from the chapter content
+  2. "Learn: ..." — knowledge to secure, e.g. definitions, writing a paragraph, key terms
+  3. "Explore: ..." — seeing it in action, e.g. watch an explainer, see the code run, apply the
+     diagram/chart to a real context
+  4. "Practice: ..." — using the knowledge, e.g. questions with support, exam-style questions
+  Keep the "Learn", "Explore" and "Practice" labels exactly as written, but vary what each one
+  says to fit the lesson's content. Each success criterion is one short line.
+- **Activities**: exactly 3 lines, one short bullet per activity, each enabling students to meet
+  one of the success criteria (grounded in the chapter's examples, figures or textbook
+  questions). Terse and simple — no explanations, no sub-points.
+- **Consolidation**: exactly 2 lines:
+  1. "Review: ..." — a review of the learning and how the success criteria were met
+  2. "Next steps: ..." — what comes next (following topic or what to prepare)
 
 Use curl, e.g.:
 curl -X POST ${window.location.origin}/api/ai-import \\
