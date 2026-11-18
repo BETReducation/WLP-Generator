@@ -108,6 +108,15 @@ curl -X POST ${window.location.origin}/api/ai-import \\
 When done, tell me to click ✦ AI Fill on ${subject.name} in the app.`;
 }
 
+function chunkByWeek(lessons: AiLessonContent[], periods: number): AiLessonContent[][] {
+  const byWeek = new Map<number, AiLessonContent[]>();
+  for (const l of lessons) {
+    const w = Math.floor(l.lesson / periods);
+    byWeek.set(w, [...(byWeek.get(w) ?? []), l]);
+  }
+  return [...byWeek.entries()].sort((a, b) => a[0] - b[0]).map(([, chunk]) => chunk);
+}
+
 // Baked in at build time from Railway's VITE_AI_IMPORT_SECRET so the prompt can tell
 // Claude Code what to send — this is a shared secret to keep randoms from POSTing
 // junk to the endpoint, not a real security boundary (it's visible in the page source).
@@ -137,14 +146,11 @@ export function AiFillButton({ subject }: { subject: Subject }) {
   const selectedTextbook = TEXTBOOKS.find((tb) => tb.id === textbookId) ?? defaultTextbook;
 
   // A week's grid only has room for `periods` lessons, so a generated batch longer than that
-  // needs to be split one week's worth at a time — not just once, however many weeks it spans.
-  const rawChunks: AiLessonContent[][] = [];
-  if (importData) {
-    for (let i = 0; i < importData.lessons.length; i += periods) {
-      rawChunks.push(importData.lessons.slice(i, i + periods));
-    }
-  }
-  const inWeekLessons = rawChunks[0] ?? [];
+  // needs to be split one week's worth at a time. Weeks are derived from each lesson's own
+  // index (floor(lesson / periods)), so a batch can start part-way through a week — e.g. lessons
+  // 4-10 for a 7-period class fill the rest of this week, then the first 4 slots of the next.
+  const rawChunks = importData ? chunkByWeek(importData.lessons, periods) : [];
+  const inWeekLessons = (rawChunks[0] ?? []).map((l) => ({ ...l, lesson: l.lesson % periods }));
   const overflowChunks = rawChunks.slice(1).map((chunk) => ({
     startLesson: chunk[0].lesson + 1,
     endLesson: chunk[chunk.length - 1].lesson + 1,
@@ -218,7 +224,7 @@ export function AiFillButton({ subject }: { subject: Subject }) {
         );
       }
 
-      const overflowChunkCount = Math.max(0, Math.ceil(json.lessons.length / periods) - 1);
+      const overflowChunkCount = Math.max(0, chunkByWeek(json.lessons, periods).length - 1);
       const targets: string[] = [];
       const names: string[] = [];
       for (let i = 0; i < overflowChunkCount; i++) {
