@@ -47,13 +47,13 @@ const TEXTBOOKS: Textbook[] = [
   },
 ];
 
-function buildPrompt(subject: Subject, textbook: Textbook, chapter: string, lessons: number): string {
+function buildPrompt(subject: Subject, textbook: Textbook, chapter: string, lessons: number, start: number): string {
   return `Generate WLP lesson content for the following:
 
 **Textbook:** ${textbook.name}
 **File:** ${textbook.path}
 **Chapter:** ${chapter}
-**Lessons to generate:** ${lessons} (lesson 0 to lesson ${lessons - 1})
+**Lessons to generate:** ${lessons} (lesson ${start} to lesson ${start + lessons - 1}) — start at lesson ${start + 1} of the week; use these exact "lesson" index values in the JSON
 **Subject ID:** ${subject.id}
 **Subject name:** ${subject.name}
 
@@ -132,6 +132,7 @@ export function AiFillButton({ subject }: { subject: Subject }) {
   const [textbookId, setTextbookId] = useState(defaultTextbook.id);
   const [chapter, setChapter] = useState('');
   const [lessonCount, setLessonCount] = useState(subject.periods);
+  const [fromLesson, setFromLesson] = useState(1);
   const [prompt, setPrompt] = useState('');
   const [copied, setCopied] = useState(false);
   const [importStatus, setImportStatus] = useState<'idle' | 'loading' | 'preview' | 'error'>('idle');
@@ -185,6 +186,7 @@ export function AiFillButton({ subject }: { subject: Subject }) {
     setTextbookId(defaultTextbook.id);
     setChapter('');
     setLessonCount(subject.periods);
+    setFromLesson(1);
     setPrompt('');
     setCopied(false);
     setImportStatus('idle');
@@ -201,7 +203,7 @@ export function AiFillButton({ subject }: { subject: Subject }) {
 
   function handleGenerate() {
     if (!chapter.trim()) return;
-    setPrompt(buildPrompt(subject, selectedTextbook, chapter.trim(), lessonCount));
+    setPrompt(buildPrompt(subject, selectedTextbook, chapter.trim(), lessonCount, fromLesson - 1));
   }
 
   async function handleCopy() {
@@ -311,6 +313,16 @@ export function AiFillButton({ subject }: { subject: Subject }) {
                   />
                 </label>
                 <label>
+                  From lesson
+                  <input
+                    type="number"
+                    min={1}
+                    max={periods}
+                    value={fromLesson}
+                    onChange={(e) => setFromLesson(Math.min(periods, Math.max(1, Number(e.target.value))))}
+                  />
+                </label>
+                <label>
                   Number of lessons
                   <input
                     type="number"
@@ -322,8 +334,8 @@ export function AiFillButton({ subject }: { subject: Subject }) {
                 </label>
               </div>
               <p className="ai-status-msg">
-                {subject.name} has {periods} lesson{periods !== 1 ? 's' : ''} per week. If you generate more than
-                that, the extra lessons will be split one week's worth at a time — on import you'll be offered a
+                {subject.name} has {periods} lesson{periods !== 1 ? 's' : ''} per week. "From lesson" starts
+                partway through the current week. If the lessons run past the end of the week, the extra lessons will be split one week's worth at a time — on import you'll be offered a
                 destination week for each batch.
               </p>
               <button

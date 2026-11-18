@@ -46,6 +46,12 @@ PDF text is extracted using `pdftotext` (installed via `brew install poppler`).
    - Locally (`npm run dev`), `/api/ai-import` 404s unless the Express server is also running
      (`npm run build && npm start`) — for pure frontend dev, generate against the hosted URL instead
 
+### Starting mid-week ("From lesson")
+The AI Fill dialog has a **From lesson** field (1-based). The prompt then asks for `lesson` indices
+starting at that point (e.g. from lesson 5 of 7 → indices 4-10). Import derives each lesson's week
+from `floor(lesson / periods)` (`chunkByWeek()` in `AiFillButton.tsx`), so lessons 4-6 fill the rest
+of the current week and 7-10 become slots 0-3 of the next week's overflow chunk.
+
 ### Lessons beyond a class's weekly period count (overflow)
 Classes have a fixed weekly lesson count (`subject.periods` — 4 for IG1/IG2, 7 for A-Level). If
 `ai-import.json` contains more lessons than that, the import preview splits them into **one
